@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0e27">
+<title>أداة الفحص الأمني</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    min-height: 100%;
+    font-family: 'Tahoma', 'Arial', sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1e2a5e 0%, #0a0e27 60%);
+    color: #fff;
+    overflow-x: hidden;
+  }
+  .header {
+    padding: 20px 15px 15px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    background: linear-gradient(to bottom, rgba(10,14,39,0.98), rgba(10,14,39,0.85));
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(96,165,250,0.2);
+    z-index: 100;
+  }
+  .header h1 {
+    margin: 0;
+    font-size: 22px;
+    color: #60a5fa;
+    text-shadow: 0 0 20px rgba(96,165,250,0.6);
+  }
+  .header p {
+    margin: 5px 0 0;
+    font-size: 12px;
+    color: #94a3b8;
+  }
+  .container { padding: 15px; max-width: 600px; margin: 0 auto; }
+  .legal-warning {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.4);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 15px;
+    font-size: 12px;
+    color: #fca5a5;
+    line-height: 1.6;
+  }
+  .legal-warning strong { color: #ef4444; }
+  .input-group {
+    background: rgba(15,23,42,0.8);
+    border: 2px solid rgba(96,165,250,0.4);
+    border-radius: 15px;
+    padding: 12px;
+    margin-bottom: 15px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .input-group input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    padding: 8px;
+    direction: ltr;
+    text-align: left;
+  }
+  .input-group input::placeholder { color: #64748b; }
+  .input-group button {
+    background: linear-gradient(135deg, #60a5fa, #2563eb);
+    border: none;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .input-group button:active { transform: scale(0.95); }
+  .scan-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+  .scan-btn {
+    padding: 14px 10px;
+    background: rgba(96,165,250,0.1);
+    border: 1px solid rgba(96,165,250,0.4);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: bold;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .scan-btn:active { transform: scale(0.97); }
+  .scan-btn.active {
+    background: rgba(251,191,36,0.2);
+    border-color: #fbbf24;
+    color: #fbbf24;
+  }
+  .scan-btn.scanning {
+    background: rgba(96,165,250,0.3);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  .scan-btn .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+  .results {
+    background: rgba(15,23,42,0.8);
+    border: 1px solid rgba(96,165,250,0.3);
+    border-radius: 15px;
+    padding: 15px;
+    margin-bottom: 15px;
+    min-height: 100px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    direction: ltr;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .results:empty::before {
+    content: 'النتائج رح تطلع هون...';
+    color: #64748b;
+    direction: rtl;
+    font-family: 'Tahoma', sans-serif;
+    display: block;
+    text-align: center;
+    padding: 30px 0;
+  }
+  .result-line { padding: 4px 0; border-bottom: 1px solid rgba(96,165,250,0.1); }
+  .result-line:last-child { border-bottom: none; }
+  .result-key { color: #60a5fa; font-weight: bold; }
+  .result-val { color: #e2e8f0; }
+  .result-ok { color: #22c55e; }
+  .result-warn { color: #fbbf24; }
+  .result-bad { color: #ef4444; }
+  .result-info { color: #a78bfa; }
+  .status {
+    text-align: center;
+    font-size: 14px;
+    color: #60a5fa;
+    padding: 10px;
+    min-height: 30px;
+  }
+  .status.error { color: #ef4444; }
+  .status.success { color: #22c55e; }
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: #475569;
+    font-size: 11px;
+  }
+  .loader {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(96,165,250,0.3);
+    border-top-color: #60a5fa;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🛡️ أداة الفحص الأمني</h1>
+  <p>Security Recon Tool</p>
+</div>
+
+<div class="container">
+
+  <div class="legal-warning">
+    <strong>⚠️ تحذير قانوني:</strong> استعمل هالأداة فقط على المواقع يلي تملكها أو عندك إذن كتابي لفحصها. الفحص بدون إذن جريمة إلكترونية يعاقب عليها القانون.
+  </div>
+
+  <div class="input-group">
+    <input type="text" id="target" placeholder="example.com" dir="ltr" autocomplete="off">
+    <button id="clearBtn">مسح</button>
+  </div>
+
+  <div class="scan-buttons">
+    <button class="scan-btn" data-scan="dns"><span class="icon">🔍</span>DNS Lookup</button>
+    <button class="scan-btn" data-scan="ip"><span class="icon">📍</span>IP Info</button>
+    <button class="scan-btn" data-scan="headers"><span class="icon">🛡️</span>Security Headers</button>
+    <button class="scan-btn" data-scan="subdomains"><span class="icon">🌐</span>Subdomains</button>
+    <button class="scan-btn" data-scan="exposed"><span class="icon">🔓</span>Exposed Files</button>
+    <button class="scan-btn" data-scan="tech"><span class="icon">📊</span>Tech Detect</button>
+  </div>
+
+  <div class="status" id="status">أدخل اسم الموقع واختار نوع الفحص</div>
+  <div class="results" id="results"></div>
+
+</div>
+
+<div class="footer">صُنع بواسطة أداة الفحص الأمني © 2025</div>
+
+<script>
+window.addEventListener('load', () => {
+  const targetInput = document.getElementById('target');
+  const resultsEl = document.getElementById('results');
+  const statusEl = document.getElementById('status');
+  const clearBtn = document.getElementById('clearBtn');
+  const scanBtns = document.querySelectorAll('.scan-btn');
+
+  const lastTarget = localStorage.getItem('lastTarget');
+  if (lastTarget) targetInput.value = lastTarget;
+
+  function setStatus(msg, type = '') {
+    statusEl.className = 'status ' + type;
+    statusEl.textContent = msg;
+  }
+  function clearResults() { resultsEl.innerHTML = ''; }
+  function addLine(key, val, cls = '') {
+    const line = document.createElement('div');
+    line.className = 'result-line';
+    line.innerHTML = '<span class="result-key">' + key + '</span>: <span class="result-val ' + cls + '">' + val + '</span>';
+    resultsEl.appendChild(line);
+  }
+  function addRaw(text, cls = '') {
+    const line = document.createElement('div');
+    line.className = 'result-line';
+    line.innerHTML = '<span class="' + cls + '">' + text + '</span>';
+    resultsEl.appendChild(line);
+  }
+  function getTarget() {
+    let t = targetInput.value.trim().toLowerCase();
+    t = t.replace(/^https?:\/\//, '');
+    t = t.replace(/\/.*$/, '');
+    t = t.replace(/^www\./, '');
+    return t;
+  }
+  function saveTarget(t) { localStorage.setItem('lastTarget', t); }
+
+  async function scanDNS() {
+    const target = getTarget();
+    if (!target) { setStatus('أدخل اسم الموقع أول', 'error'); return; }
+    const types = ['A', 'AAAA', 'MX', 'TXT', 'NS', 'CNAME'];
+    addRaw('🔍 DNS Records for: ' + target, 'result-info');
+    addRaw('─'.repeat(40));
+    for (const type of types) {
+      try {
+        const res = await fetch('https://dns.google/resolve?name=' + target + '&type=' + type);
+        const data = await res.json();
+        if (data.Answer && data.Answer.length > 0) {
+          addRaw('📌 ' + type + ':', 'result-key');
+          data.Answer.forEach(a => { addRaw('   → ' + a.data + ' (TTL: ' + a.TTL + ')', 'result-val'); });
+        }
+      } catch (e) {}
+    }
+    addRaw('─'.repeat(40));
+    addRaw('✅ خلص فحص DNS', 'result-ok');
+  }
+
+  async function scanIP() {
+    const target = getTarget();
+    if (!target) { setStatus('أدخل اسم الموقع أول', 'error'); return; }
+    addRaw('📍 IP Information for: ' + target, 'result-info');
+    addRaw('─'.repeat(40));
+    try {
+      const dnsRes = await fetch('https://dns.google/resolve?name=' + target + '&type=A');
+      const dnsData = await dnsRes.json();
+      if (!dnsData.Answer || !dnsData.Answer[0]) {
+        addRaw('❌ ما قدرنا نلاقي IP', 'result-bad');
+        return;
+      }
+      const ip = dnsData.Answer[0].data;
+      addRaw('🌐 IP Address: ' + ip, 'result-key');
+      const ipRes = await fetch('https://ipapi.co/' + ip + '/json/');
+      const ipData = await ipRes.json();
+      if (ipData && !ipData.error) {
+        addLine('الدولة', ipData.country_name || 'غير معروف');
+        addLine('المدينة', ipData.city || 'غير معروف');
+        addLine('المنطقة', ipData.region || 'غير معروف');
+        addLine('مزود الخدمة', ipData.org || 'غير معروف');
+        addLine('ASN', ipData.asn || 'غير معروف');
+        addLine('الموقع', ipData.latitude + ', ' + ipData.longitude);
+        addLine('المنطقة الزمنية', ipData.timezone || 'غير معروف');
+      }
+    } catch (e) { addRaw('❌ خطأ: ' + e.message, 'result-bad'); }
+    addRaw('─'.repeat(40));
+    addRaw('✅ خلص فحص IP', 'result-ok');
+  }
+
+  async function scanHeaders() {
+    const target = getTarget();
+    if (!target) { setStatus('أدخل اسم الموقع أول', 'error'); return; }
+    addRaw('🛡️ Security Headers for: ' + target, 'result-info');
+    addRaw('─'.repeat(40));
+    const importantHeaders = {
+      'strict-transport-security': { name: 'HSTS', desc: 'يجبر المتصفح على HTTPS' },
+      'content-security-policy': { name: 'CSP', desc: 'يمنع XSS و injection' },
+      'x-frame-options': { name: 'X-Frame-Options', desc: 'يمنع clickjacking' },
+      'x-content-type-options': { name: 'X-Content-Type', desc: 'يمنع MIME sniffing' },
+      'referrer-policy': { name: 'Referrer-Policy', desc: 'يتحكم بالمُحيل' },
+      'permissions-policy': { name: 'Permissions-Policy', desc: 'يتحكم بصلاحيات المتصفح' }
+    };
+    try {
+      const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://' + target);
+      const res = await fetch(proxyUrl, { method: 'HEAD' });
+      addRaw('📋 Security Headers Analysis:', 'result-key');
+      addRaw('');
+      for (const [key, info] of Object.entries(importantHeaders)) {
+        const val = res.headers.get(key);
+        if (val) {
+          addRaw('✅ ' + info.name + ' ← موجود', 'result-ok');
+        } else {
+          addRaw('❌ ' + info.name + ' ← مفقود!', 'result-bad');
+        }
+      }
+      addRaw('');
+      addRaw('📊 Server: ' + (res.headers.get('server') || 'مخفي'), 'result-val');
+    } catch (e) {
+      addRaw('⚠️ ما قدرنا نسحب الرؤوس (CORS)', 'result-warn');
+    }
+    addRaw('─'.repeat(40));
+    addRaw('✅ خلص فحص الرؤوس', 'result-ok');
+  }
+
+  async function scanSubdomains() {
+    const target = getTarget();
+    if (!target) { setStatus('أدخل اسم الموقع أول', 'error'); return; }
+    addRaw('🌐 Subdomains for: ' + target, 'result-info');
+    addRaw('─'.repeat(40));
+    try {
+      const url = 'https://crt.sh/?q=%25.' + target + '&output=json';
+      const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+      const res = await fetch(proxyUrl);
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const subdomains = new Set();
+        data.forEach(entry => {
+          entry.name_value.split('\n').forEach(n => {
+            n = n.trim().toLowerCase();
+            if (n.endsWith('.' + target) || n === target) subdomains.add(n);
+          });
+        });
+        const sorted = Array.from(subdomains).sort();
+        addRaw('📊 لقينا ' + sorted.length + ' نطاق فرعي:', 'result-key');
+        sorted.forEach(sd => addRaw('   🌐 ' + sd, 'result-val'));
+      } else {
+        addRaw('ما لقينا نطاقات فرعية', 'result-warn');
+      }
+    } catch (e) { addRaw('❌ خطأ: ' + e.message, 'result-bad'); }
+    addRaw('─'.repeat(40));
+    addRaw('✅ خلص', 'result-ok');
+  }
+
+  async function scanExposed() {
+    const target = getTarget();
+    if (!target) { setStatus('أدخل اسم الموقع أول', 'error'); return; }
+    addRaw('🔓 Exposed Files for: ' + target, 'result-info');
+    addRaw('─'.repeat(40));
+    const files = [
+      { path: '/.git/config', name: 'Git Config' },
+      { path: '/.env', name: 'Environment File' },
+      { path: '/wp-admin/', name: 'WordPress Admin' },
+      { path: '/admin/', name: 'Admin Panel' },
+      { path: '/phpmyadmin/', name: 'phpMyAdmin' },
+      { path: '/.htaccess', name: 'htaccess' },
+      { path: '/robots.txt', name: 'Robots.txt' }
+    ];
+    for (const file of files) {
+      try {
+        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://' + target + file.path);
+        const res = await fetch(proxyUrl, { method: 'HEAD' });
+        if (res.status === 200) {
+          if (file.path === '/robots.txt') {
+            addRaw('ℹ️ ' + file.name + ' ← موجود', 'result-info');
+          } else {
+            addRaw('🚨 ' + file.name + ' ← مكشوف!', 'result-bad');
+          }
+        }
+      } catch (e) {}
+    }
+    addRaw('─'.repeat(40));
+    addRaw('✅ خلص', 'result-ok');
+  }
+
+  async function scanTech() {
+    const target = getTarget();
+    if (!target) { setStatus('أدخل اسم الموقع أول', 'error'); return; }
+    addRaw('📊 Tech Detection for: ' + target, 'result-info');
+    addRaw('─'.repeat(40));
+    try {
+      const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://' + target);
+      const res = await fetch(proxyUrl);
+      const html = await res.text();
+      const techs = [
+        { name: 'WordPress', regex: /wp-content|wp-includes/i },
+        { name: 'jQuery', regex: /jquery/i },
+        { name: 'Bootstrap', regex: /bootstrap/i },
+        { name: 'React', regex: /react/i },
+        { name: 'Vue.js', regex: /vue\.js|vuejs/i },
+        { name: 'Angular', regex: /angular/i },
+        { name: 'Google Analytics', regex: /google-analytics|gtag/i },
+        { name: 'Cloudflare', regex: /cloudflare/i },
+        { name: 'PHP', regex: /\.php/i },
+        { name: 'Nginx', regex: /nginx/i }
+      ];
+      addRaw('🔍 تقنيات مكتشفة:', 'result-key');
+      let found = 0;
+      techs.forEach(tech => {
+        if (tech.regex.test(html)) { addRaw('   ✅ ' + tech.name, 'result-ok'); found++; }
+      });
+      if (found === 0) addRaw('   ما لقينا تقنيات معروفة', 'result-warn');
+      addRaw('');
+      addRaw('📏 حجم الصفحة: ' + html.length + ' حرف', 'result-val');
+    } catch (e) { addRaw('❌ خطأ: ' + e.message, 'result-bad'); }
+    addRaw('─'.repeat(40));
+    addRaw('✅ خلص', 'result-ok');
+  }
+
+  const scanners = { dns: scanDNS, ip: scanIP, headers: scanHeaders, subdomains: scanSubdomains, exposed: scanExposed, tech: scanTech };
+
+  scanBtns.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const scanType = btn.dataset.scan;
+      const target = getTarget();
+      if (!target) {
+        setStatus('⚠️ أدخل اسم الموقع أول', 'error');
+        targetInput.focus();
+        return;
+      }
+      saveTarget(target);
+      scanBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active', 'scanning');
+      btn.disabled = true;
+      clearResults();
+      setStatus('🔍 جاري الفحص... <span class="loader"></span>');
+      try {
+        await scanners[scanType]();
+        setStatus('✅ خلص الفحص', 'success');
+      } catch (e) {
+        setStatus('❌ خطأ: ' + e.message, 'error');
+      } finally {
+        btn.classList.remove('scanning');
+        btn.disabled = false;
+      }
+    });
+  });
+
+  clearBtn.addEventListener('click', () => {
+    targetInput.value = '';
+    clearResults();
+    setStatus('أدخل اسم الموقع واختار نوع الفحص');
+    targetInput.focus();
+  });
+
+  targetInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') document.querySelector('.scan-btn[data-scan="dns"]').click();
+  });
+});
+</script>
+</body>
+</html>
